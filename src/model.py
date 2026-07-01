@@ -14,9 +14,9 @@ class CNN(nn.Module):
 
         self.pool = nn.MaxPool2d(2)
 
-        self.fc1 = nn.Linear(32*32*31, 32)
+        self.fc1 = nn.Linear(32*32*31, 64)
 
-        self.fc2 = nn.Linear(32, num_classes)
+        self.fc2 = nn.Linear(64, num_classes)
 
     def forward(self, x):
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
