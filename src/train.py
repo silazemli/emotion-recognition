@@ -7,26 +7,11 @@ from torch.utils.data import DataLoader, random_split
 from dataset import RAVDESSDataset
 from model import CNN
 
-
 data_dir = Path("data/audio_speech_actors_01-24")
-
-emotion_map = {
-    "01": "neutral",
-    "02": "calm",
-    "03": "happy",
-    "04": "sad",
-    "05": "angry",
-    "06": "fearful",
-    "07": "disgust",
-    "08": "surprised"
-}
-
-def add_noise(x, sigma=0.012):
-    return x + sigma * torch.randn_like(x)
 
 wav_files = list(data_dir.rglob("*.wav"))
 
-train_size = int(0.8 * len(wav_files))
+train_size = int(0.8*len(wav_files))
 test_size = len(wav_files) - train_size
 
 train_files, test_files = random_split(
@@ -35,21 +20,9 @@ train_files, test_files = random_split(
     generator=torch.Generator().manual_seed(42)
 )
 
-mean, std = RAVDESSDataset.compute_mean_std(train_files)
+train_dataset = RAVDESSDataset(train_files)
 
-train_dataset = RAVDESSDataset(
-    train_files,
-    emotion_map,
-    mean,
-    std
-)
-
-test_dataset = RAVDESSDataset(
-    test_files,
-    emotion_map,
-    mean,
-    std
-)
+test_dataset = RAVDESSDataset(test_files)
 
 train_loader = DataLoader(
     train_dataset,
@@ -68,7 +41,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CNN(num_classes=8).to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-5)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
 
 for epoch in range(13):
     model.train()
@@ -78,8 +51,6 @@ for epoch in range(13):
     total = 0
 
     for x, y in train_loader:
-        x = add_noise(x, sigma=0.01)
-
         x = x.to(device)
         y = y.to(device)
 

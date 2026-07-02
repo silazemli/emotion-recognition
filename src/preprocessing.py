@@ -27,17 +27,12 @@ def make_mel(audio, sr):
     
     return mel_db
 
-def normalize(mel, mean, std):
-    return (mel - mean) / (std + 1e-9)
-
-def preprocess(path, sr=SR, duration=DURATION, mean=None, std=None):
-    target_len = int(sr * duration)
+def preprocess(path, sr=SR, duration=DURATION):
+    target_len = int(sr*duration)
     
     audio = load_audio(path, sr)
     audio = fix_length(audio, target_len)
     
     mel = make_mel(audio, sr)
-    if mean is not None:
-        mel = normalize(mel, mean, std)
 
     return mel
