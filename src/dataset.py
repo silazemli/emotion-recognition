@@ -11,7 +11,7 @@ class RAVDESSDataset(Dataset):
         for file in files:
             emotion = emotion_map[file.stem.split("-")[2]]
 
-            mel = preprocess(file)
+            mel = preprocess(file, mean, std)
 
             self.X.append(torch.tensor(mel).unsqueeze(0))
             self.y.append(emotion)

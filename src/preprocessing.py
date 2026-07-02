@@ -37,7 +37,7 @@ def preprocess(path, sr=SR, duration=DURATION, mean=None, std=None):
     audio = fix_length(audio, target_len)
     
     mel = make_mel(audio, sr)
-    # if mean is not None:
-    #     mel = normalize(mel, mean, std)
+    if mean is not None:
+        mel = normalize(mel, mean, std)
 
     return mel
