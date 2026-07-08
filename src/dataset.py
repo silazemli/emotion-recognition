@@ -11,8 +11,8 @@ class RAVDESSDataset(Dataset):
         for file in files:
             mel = preprocess(file)
 
-            self.X.append(torch.tensor(mel).unsqueeze(0))
-            self.y.append(int(file.stem.split("-")[2]) - 1)
+            self.X.append(torch.from_numpy(mel.astype(np.float32)).unsqueeze(0))
+            self.y.append(torch.tensor(int(file.stem.split("-")[2]) - 1, dtype=torch.long))
 
     def __len__(self):
         return len(self.X)

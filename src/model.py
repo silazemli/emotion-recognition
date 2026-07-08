@@ -18,9 +18,11 @@ class CNN(nn.Module):
         self.bottleneck = nn.Conv2d(64, 16, kernel_size=1)
 
         self.pool = nn.MaxPool2d(2)
+        
+        # self.adaptive_pool = nn.AdaptiveAvgPool2d((8, 8))
 
-        self.fc1 = nn.Linear(3840, 256)
-        self.fc2 = nn.Linear(256, num_classes)
+        self.fc1 = nn.Linear(12800, 128)
+        self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
@@ -29,6 +31,7 @@ class CNN(nn.Module):
 
         x = F.relu(self.bottleneck(x))
         
+        # x = self.adaptive_pool(x)
         x = x.flatten(1)
 
         x = F.relu(self.fc1(x))

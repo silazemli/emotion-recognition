@@ -2,12 +2,20 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
 from dataset import RAVDESSDataset
 from model import CNN
 
 import numpy as np
+
+import time
+
+seed = 42
+
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.xpu.manual_seed(seed)
 
 def time_mask(spec, max_width):
     if max_width == 0:
@@ -55,51 +63,53 @@ for actor in test_actors:
     test_files += list(actor.rglob("*.wav"))
 
 train_dataset = RAVDESSDataset(train_files)
-
 test_dataset = RAVDESSDataset(test_files)
+
+train_dataset.X = [x.to("xpu") for x in train_dataset.X]
+train_dataset.y = [y.to("xpu") for y in train_dataset.y]
+
+test_dataset.X = [x.to("xpu") for x in test_dataset.X]
+test_dataset.y = [y.to("xpu") for y in test_dataset.y]
+
+batch_size = 128
 
 train_loader = DataLoader(
     train_dataset,
-    batch_size=8,
+    batch_size=batch_size,
     shuffle=True
 )
 
 test_loader = DataLoader(
     test_dataset,
-    batch_size=8,
+    batch_size=batch_size,
     shuffle=False
 )
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "xpu"
 
 model = CNN(num_classes=8).to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1.5e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1.5e-4)
 
 for epoch in range(20):
+    start = time.time()
     model.train()
     total_loss = 0
 
     correct = 0
     total = 0
 
-    if epoch < 5:
-        freq_mask_width = 3
-        time_mask_width = 5
-    elif epoch < 8:
-        freq_mask_width = 6
-        time_mask_width = 10
-    else:
-        freq_mask_width = 8
-        time_mask_width = 13
+    freq_mask_width = 16
+    time_mask_width = 40
 
     for x, y in train_loader:
-        x = x.to(device)
-        y = y.to(device)
-
-        x = spec_augment(x, freq_max_width=freq_mask_width, time_max_width=time_mask_width)
-
+        x = spec_augment(
+            x,
+            freq_max_width=freq_mask_width,
+            time_max_width=time_mask_width
+        )
+        
         optimizer.zero_grad()
 
         out = model(x)
@@ -140,7 +150,6 @@ for epoch in range(20):
         f"Epoch {epoch+1:2d} | "
         f"Loss: {total_loss:.2f} | "
         f"Train: {train_acc:.3f} | "
-        f"Test: {test_acc:.3f}"
+        f"Test: {test_acc:.3f} | " 
+        f"Elapsed: {(time.time() - start):.3f}"
     )
-
-torch.save(model.state_dict(), "models/cnn_ravdess.pth")
