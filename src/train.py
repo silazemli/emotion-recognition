@@ -24,6 +24,8 @@ def time_mask(spec, max_width):
     time = spec.shape[3]
 
     t = np.random.randint(0, max_width)
+    if t == 0:
+        return spec
     t0 = np.random.randint(0, time - t)
 
     spec[:, :, :, t0:t0+t] = 0
@@ -36,12 +38,15 @@ def freq_mask(spec, max_width):
     freq = spec.shape[2]
 
     f = np.random.randint(0, max_width)
+    if f == 0:
+        return spec
     f0 = np.random.randint(0, freq - f)
 
     spec[:, :, f0:f0+f, :] = 0
     return spec
 
 def spec_augment(spec, freq_max_width=7, time_max_width=11):
+    spec = spec.clone()
     spec = time_mask(spec, time_max_width)
     spec = freq_mask(spec, freq_max_width)
     return spec
@@ -65,13 +70,7 @@ for actor in test_actors:
 train_dataset = RAVDESSDataset(train_files)
 test_dataset = RAVDESSDataset(test_files)
 
-train_dataset.X = [x.to("xpu") for x in train_dataset.X]
-train_dataset.y = [y.to("xpu") for y in train_dataset.y]
-
-test_dataset.X = [x.to("xpu") for x in test_dataset.X]
-test_dataset.y = [y.to("xpu") for y in test_dataset.y]
-
-batch_size = 128
+batch_size = 32
 
 train_loader = DataLoader(
     train_dataset,
@@ -90,9 +89,14 @@ device = "xpu"
 model = CNN(num_classes=8).to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1.5e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=5)
 
-for epoch in range(20):
+best_acc = 0.0
+patience = 30
+epochs_without_improvement = 0
+
+for epoch in range(200):
     start = time.time()
     model.train()
     total_loss = 0
@@ -100,10 +104,12 @@ for epoch in range(20):
     correct = 0
     total = 0
 
-    freq_mask_width = 16
-    time_mask_width = 40
+    freq_mask_width = 6
+    time_mask_width = 10
 
     for x, y in train_loader:
+        x = x.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
         x = spec_augment(
             x,
             freq_max_width=freq_mask_width,
@@ -146,9 +152,27 @@ for epoch in range(20):
 
     test_acc = correct / total
 
+    if test_acc > best_acc:
+        best_acc = test_acc
+        epochs_without_improvement = 0
+
+        torch.save(model.state_dict(), "models/best_model.pt")
+        print(f"New best model: {best_acc:.3f}")
+        
+    else:
+        epochs_without_improvement += 1
+
+    if epochs_without_improvement >= patience:
+        print("Early stopping.")
+        break
+
+    scheduler.step(test_acc)
+
+    lr = optimizer.param_groups[0]["lr"]
+
     print(
         f"Epoch {epoch+1:2d} | "
-        f"Loss: {total_loss:.2f} | "
+        f"Loss: {(total_loss / len(train_loader)):.2f} | "
         f"Train: {train_acc:.3f} | "
         f"Test: {test_acc:.3f} | " 
         f"Elapsed: {(time.time() - start):.3f}"

@@ -43,21 +43,50 @@ def make_mel(audio, sr):
         hop_length=160
     )
 
-    mel_db = librosa.power_to_db(mel, ref=np.max)
-    
-    return mel_db
+    mel = librosa.power_to_db(mel, ref=np.max)
 
-def preprocess(path, sr=SR, duration=DURATION):
+    mel = (mel - mel.mean()) / (mel.std() + 1e-9)
+    
+    return mel
+
+def make_features(audio, sr):
+    mel = librosa.feature.melspectrogram(
+        y=audio,
+        sr=sr,
+        n_mels=128,
+        n_fft=512,
+        hop_length=160
+    )
+
+    mel = librosa.power_to_db(mel, ref=np.max)
+
+    delta = librosa.feature.delta(mel)
+    delta2 = librosa.feature.delta(mel, order=2)
+
+    features = np.stack([mel, delta, delta2], axis=0)
+
+    return features
+
+def normalize_features(features):
+    return (features - features.mean(axis=(1,2), keepdims=True)) / (
+        features.std(axis=(1,2), keepdims=True) + 1e-9)
+
+def preprocess(path, augment=False, sr=SR, duration=DURATION):
     target_len = int(sr*duration)
     
     audio = load_audio(path, sr)
     audio = fix_length(audio, target_len)
     
-    if np.random.random() < 0.5:
-        audio = add_noise(audio)
+    # if np.random.random() < 0.5:
+    #     audio = add_noise(audio)
     
-    if np.random.random() < 0.0:
-        audio = random_gain(audio)
+    # if np.random.random() < 0.0:
+    #     audio = random_gain(audio)
+
+    # features = make_features(audio, sr)
+    # features = normalize_features(features).astype(np.float32)
+
+    # return features
 
     mel = make_mel(audio, sr)
 
