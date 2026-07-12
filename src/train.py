@@ -1,11 +1,10 @@
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from dataset import RAVDESSDataset
 from model import CNN
+from split import get_ravdess_split
 
 import numpy as np
 
@@ -51,21 +50,7 @@ def spec_augment(spec, freq_max_width=7, time_max_width=11):
     spec = freq_mask(spec, freq_max_width)
     return spec
 
-data_dir = Path("data/audio_speech_actors_01-24")
-
-actor_dirs = sorted([p for p in data_dir.iterdir() if p.is_dir()])
-
-train_actors = actor_dirs[:20]
-test_actors  = actor_dirs[20:]
-
-train_files = []
-test_files = []
-
-for actor in train_actors:
-    train_files += list(actor.rglob("*.wav"))
-
-for actor in test_actors:
-    test_files += list(actor.rglob("*.wav"))
+train_files, test_files = get_ravdess_split()
 
 train_dataset = RAVDESSDataset(train_files)
 test_dataset = RAVDESSDataset(test_files)
@@ -89,7 +74,7 @@ device = "xpu"
 model = CNN(num_classes=8).to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=5e-4)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=5)
 
 best_acc = 0.0
@@ -104,8 +89,8 @@ for epoch in range(200):
     correct = 0
     total = 0
 
-    freq_mask_width = 6
-    time_mask_width = 10
+    freq_mask_width = 10
+    time_mask_width = 12
 
     for x, y in train_loader:
         x = x.to(device, non_blocking=True)
@@ -157,7 +142,6 @@ for epoch in range(200):
         epochs_without_improvement = 0
 
         torch.save(model.state_dict(), "models/best_model.pt")
-        print(f"New best model: {best_acc:.3f}")
         
     else:
         epochs_without_improvement += 1
@@ -171,9 +155,9 @@ for epoch in range(200):
     lr = optimizer.param_groups[0]["lr"]
 
     print(
-        f"Epoch {epoch+1:2d} | "
-        f"Loss: {(total_loss / len(train_loader)):.2f} | "
-        f"Train: {train_acc:.3f} | "
-        f"Test: {test_acc:.3f} | " 
-        f"Elapsed: {(time.time() - start):.3f}"
+        f"{epoch+1:3d} | "
+        f"loss: {(total_loss / len(train_loader)):.2f} | "
+        f"train / test: {train_acc:.3f} / {test_acc:.3f} | "
+        f"et: {(time.time() - start):.0f}"
+        f"{" | new best!" if epochs_without_improvement == 0 else ""}"
     )

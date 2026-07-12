@@ -10,7 +10,8 @@ def load_audio(path, sr):
 
 def fix_length(audio, target_len):
     if len(audio) > target_len:
-        return audio[:target_len]
+        start = np.random.randint(0, len(audio) - target_len + 1)
+        return audio[start:start + target_len]
     else:
         return np.pad(audio, (0, target_len - len(audio)), mode='constant')
 
@@ -71,7 +72,7 @@ def normalize_features(features):
     return (features - features.mean(axis=(1,2), keepdims=True)) / (
         features.std(axis=(1,2), keepdims=True) + 1e-9)
 
-def preprocess(path, augment=False, sr=SR, duration=DURATION):
+def preprocess(path, sr=SR, duration=DURATION):
     target_len = int(sr*duration)
     
     audio = load_audio(path, sr)
