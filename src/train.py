@@ -11,7 +11,6 @@ import numpy as np
 import time
 
 LAZY_DATASET = False
-WAVEFORM_AUGMENT = False
 SPEC_AUGMENT = True
 
 seed = 42
@@ -22,24 +21,9 @@ torch.xpu.manual_seed(seed)
 
 train_files, test_files = get_ravdess_split()
 
-mean = np.load("src/stats/mel_mean.npy")
-std = np.load("src/stats/mel_std.npy")
+train_dataset = RAVDESSDataset(train_files)
 
-train_dataset = RAVDESSDataset(
-    train_files,
-    mean,
-    std,
-    lazy=LAZY_DATASET,
-    augment=WAVEFORM_AUGMENT
-)
-
-test_dataset = RAVDESSDataset(
-    test_files,
-    mean,
-    std,
-    lazy=LAZY_DATASET,
-    augment=False
-)
+test_dataset = RAVDESSDataset(test_files)
 
 batch_size = 32
 
@@ -75,8 +59,8 @@ for epoch in range(200):
     correct = 0
     total = 0
 
-    freq_mask_width = 10
-    time_mask_width = 12
+    freq_mask_width = 15
+    time_mask_width = 30
 
     for x, y in train_loader:
         x = x.to(device, non_blocking=True)

@@ -30,6 +30,3 @@ def make_mel(audio, sr=SR):
     mel = (mel - mel.mean()) / (mel.std() + 1e-9)
     
     return mel.astype(np.float32)
-
-def normalize(mel, mean, std):
-    return (mel - mean[:, None]) / (std[:, None] + 1e-9)
