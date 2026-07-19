@@ -10,7 +10,6 @@ from augment import spec_augment
 import numpy as np
 import time
 
-LAZY_DATASET = False
 SPEC_AUGMENT = True
 
 seed = 42
@@ -48,7 +47,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=5e-4)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=5)
 
 best_acc = 0.0
-patience = 15
+patience = 25
 epochs_without_improvement = 0
 
 for epoch in range(200):
@@ -59,8 +58,8 @@ for epoch in range(200):
     correct = 0
     total = 0
 
-    freq_mask_width = 15
-    time_mask_width = 30
+    freq_mask_width = 10
+    time_mask_width = 12
 
     for x, y in train_loader:
         x = x.to(device, non_blocking=True)
@@ -118,7 +117,6 @@ for epoch in range(200):
         epochs_without_improvement += 1
 
     if epochs_without_improvement >= patience:
-        print("Early stopping.")
         break
 
     scheduler.step(test_acc)
