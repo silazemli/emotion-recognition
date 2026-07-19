@@ -13,8 +13,6 @@ def fix_length(audio, sr=SR, duration=DURATION):
     
     if len(audio) > target_len:
         return audio[:target_len]
-        start = np.random.randint(0, len(audio) - target_len + 1)
-        return audio[start:start + target_len]
     else:
         return np.pad(audio, (0, target_len - len(audio)), mode='constant')
 

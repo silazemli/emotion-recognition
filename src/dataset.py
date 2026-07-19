@@ -34,7 +34,6 @@ class RAVDESSDataset(Dataset):
                 audio = fix_length(audio)
 
                 mel = make_mel(audio)
-                # mel = normalize(mel, mean, std)
 
                 self.X.append(torch.from_numpy(mel).unsqueeze(0))
                 self.y.append(torch.tensor(label, dtype=torch.long))
