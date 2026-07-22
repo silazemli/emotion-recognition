@@ -38,7 +38,12 @@ test_loader = DataLoader(
     shuffle=False
 )
 
-device = "xpu"
+if torch.xpu.is_available():
+    device = "xpu"
+elif torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
 
 model = CNN(num_classes=8).to(device)
 
